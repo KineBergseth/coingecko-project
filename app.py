@@ -57,7 +57,7 @@ def get_price_history(coin_id, days):
     return dates, prices, historic_low, historic_high
 
 
-# Dash App med plotly
+# Dash App user interface
 # bruker extern CSS fil, har ikke skrevet den selv btw
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = Dash(__name__, external_stylesheets=external_stylesheets)
@@ -92,6 +92,10 @@ def generate_table():
     )
 
 
+# summary table
+
+# graph - price, market cap
+
 app.layout = html.Div(children=[
     html.Br(),
     html.H1("Crypto stuff",
@@ -100,5 +104,6 @@ app.layout = html.Div(children=[
     html.Br(),
 ])
 
+# start flask server
 if __name__ == '__main__':
     app.run_server(debug=True)  # dev tool and hot-reloading hihi
