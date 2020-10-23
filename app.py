@@ -91,10 +91,13 @@ def generate_table():
         ]
     )
 
+# description
 
 # summary table
 
 # graph - price, market cap
+
+
 
 app.layout = html.Div(children=[
     html.Br(),
