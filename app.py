@@ -25,7 +25,7 @@ def get_coin(coin_id='bitcoin'):
 def get_data():
     data = cg.get_coins_markets(vs_currency='usd')
     df = pd.DataFrame(data)
-    df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'roi'], axis=1, inplace=True)
+    df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'price_change_24h', 'market_cap_change_24h', 'ath', 'ath_change_percentage', 'ath_date', 'atl', 'atl_change_percentage', 'atl_date', 'roi'], axis=1, inplace=True)
     df.to_csv(r'data.csv')
     return df
 
