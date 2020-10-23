@@ -65,7 +65,7 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
 
-# create table and populate with account data
+# create table and populate with crypto data
 def generate_table():
     return DataTable(
         id='table',
