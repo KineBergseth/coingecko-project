@@ -16,16 +16,18 @@ cg = CoinGeckoAPI()
 
 # fetches data about a specific coin
 def get_coin(coin_id='bitcoin'):
-    return cg.get_coin_by_id(id)
+    return cg.get_coin_by_id(coin_id)
 
 
 # print(get_coin())
 
 # fetches lots of data about all coins
 def get_data():
-    data = cg.get_coins_markets(vs_currency='usd')
-    df = pd.DataFrame(data)
-    df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'price_change_24h', 'market_cap_change_24h', 'ath', 'ath_change_percentage', 'ath_date', 'atl', 'atl_change_percentage', 'atl_date', 'roi'], axis=1, inplace=True)
+    coin_data = cg.get_coins_markets(vs_currency='usd')
+    df = pd.DataFrame(coin_data)
+    df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'price_change_24h', 'market_cap_change_24h', 'ath',
+             'ath_change_percentage', 'ath_date', 'atl', 'atl_change_percentage', 'atl_date', 'roi'], axis=1,
+            inplace=True)
     df.to_csv(r'data.csv')
     return df
 
@@ -34,9 +36,9 @@ print(get_data().loc[1])
 
 
 # get data about a crypto currency for a specific date
-def get_price_date(coin_id, date):
-    data = cg.get_coin_history_by_id(coin_id, date)
-    price = data['market_data']['current_price']['usd']  # kanskje ikke verdens beste løsning, men funker :P
+def get_price_date(coin_id, chosen_date):
+    date_data = cg.get_coin_history_by_id(coin_id, chosen_date)
+    price = date_data['market_data']['current_price']['usd']  # kanskje ikke verdens beste løsning, men funker :P
     return price
 
 
@@ -91,21 +93,116 @@ def generate_table():
         ]
     )
 
+
+# create dropdownlist med alle coins
+def generate_ddl_coins():
+    return dcc.Dropdown(
+        id="input-ddl-coins",
+        options=[{'label': i, 'value': i} for i in get_data()['id']],
+        value='bitcoin',
+        style=dict(
+            width='40%',
+        )
+    )
+
+
+# generate slider where user can select input
+def generate_slider():
+    return html.Div(dcc.Slider(
+        id='slider',
+        min=1,
+        max=360,
+        value=30,
+        step=1,
+        marks={
+            7: '1 week',
+            30: '1 month',
+            90: 'Quarter',
+            180: '6 months',
+            360: '1 year'
+        }
+    ),
+        style={'width': '80%', 'padding': '20px 10px 10px 20px'},
+    )
+
 # description
 
 # summary table
-
-# graph - price, market cap
-
-
-
 app.layout = html.Div(children=[
     html.Br(),
     html.H1("Crypto stuff",
             style={'text-align': 'center'}),
     generate_table(),
     html.Br(),
+    html.Br(),
+    generate_ddl_coins(),
+    html.Div(id='graph'),
+    generate_slider(),
+    html.Br(),
+    dcc.Tabs(id='tabs-example', value='tab-1', children=[
+        dcc.Tab(label='Tab one', value='tab-1'),
+        dcc.Tab(label='Tab two', value='tab-2'),
+        dcc.Tab(label='Tab three', value='tab-3'),
+    ]),
+    html.Div(id='tabs-example-content')
 ])
+
+# graph - price, market cap
+
+
+
+
+@app.callback(Output('tabs-example-content', 'children'),
+              [Input('tabs-example', 'value')])
+def render_content(tab):
+    if tab == 'tab-1':
+        return html.Div([
+            html.H3('Tab content 1')
+        ])
+    elif tab == 'tab-2':
+        return html.Div([
+            html.H3('Tab content 2')
+        ])
+    elif tab == 'tab-3':
+        return html.Div([
+            html.H3('Tab content 3')
+        ])
+
+
+# find data for graph
+@app.callback(
+    Output('graph', 'children'),
+    [Input('input-ddl-coins', 'value'),
+     Input('slider', 'value')])
+def update_graph(coin, days):
+    dates, prices, historic_low, historic_high = get_price_history(coin, days)
+    return html.Div(dcc.Graph(
+        id='figure',
+        figure={
+            'data': [{
+                'x': dates,
+                'y': prices,
+                'type': 'scatter',
+                'name': coin + 'price'
+            }
+            ],
+            'layout': {
+                'title': coin + ' Last ' + str(days) + ' Days',
+                'xaxis': {
+                    'title': 'Date',
+                    'showgrid': True,
+                },
+                'yaxis': {
+                    'title': 'Price USD',
+                    'showgrid': True,
+                }
+            }
+        },
+        config={
+            'displayModeBar': False
+        }
+    )
+    )
 
 # start flask server
 if __name__ == '__main__':
