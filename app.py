@@ -8,6 +8,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash_table import DataTable
 from dash.dependencies import Input, Output, State
+from itertools import islice
 import json
 
 # Python3 wrapper around the CoinGecko API
@@ -19,7 +20,10 @@ def get_coin(coin_id='bitcoin'):
     return cg.get_coin_by_id(coin_id)
 
 
-# print(get_coin())
+# get list of all supported currencies
+def get_currencies():
+    return cg.get_supported_vs_currencies()
+
 
 # fetches lots of data about all coins
 def get_data():
@@ -45,9 +49,9 @@ def get_price_date(coin_id, chosen_date):
 # get history of a crypto currency's price
 # 1 day will show data-points for each minute, 1 or more days will show hourly datapoints
 # intervals higher than 90 days will show daily data
-def get_price_history(coin_id, days):
+def get_price_history(coin_id, currency, days):
     # get market_chart data from last x number of days
-    price_history = cg.get_coin_market_chart_by_id(coin_id, "usd", days)
+    price_history = cg.get_coin_market_chart_by_id(coin_id, currency, days)
     # add timestamps to list
     timestamps = [price[0] for price in price_history['prices']]
     dates = [datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S') for timestamp in timestamps]
@@ -71,8 +75,8 @@ server = app.server
 def generate_table():
     return DataTable(
         id='table',
-        data=get_data().to_dict('records'),
-        columns=[{"name": i, "id": i} for i in get_data().columns],
+        data=get_data()[0:10].to_dict('records'),  # only show 10/100 rows
+        columns=[{"name": item, "id": item} for item in get_data().columns],
         filter_action='native',
         sort_action='native',
         style_data_conditional=[
@@ -94,12 +98,24 @@ def generate_table():
     )
 
 
-# create dropdownlist med alle coins
+# create dropdownlist with all coins
 def generate_ddl_coins():
     return dcc.Dropdown(
         id="input-ddl-coins",
         options=[{'label': i, 'value': i} for i in get_data()['id']],
         value='bitcoin',
+        style=dict(
+            width='40%',
+        )
+    )
+
+
+# create dropdownlist with all supported currencies
+def generate_ddl_currencies():
+    return dcc.Dropdown(
+        id="input-ddl-currencies",
+        options=[{'label': i, 'value': i} for i in get_currencies()],
+        value='usd',
         style=dict(
             width='40%',
         )
@@ -125,6 +141,11 @@ def generate_slider():
         style={'width': '80%', 'padding': '20px 10px 10px 20px'},
     )
 
+
+def coin_info():
+    return html.Div(html.Img(src=('https://assets.coingecko.com/coins/images/1/large/bitcoin.png?1547033579')))
+
+
 # description
 
 # summary table
@@ -134,8 +155,10 @@ app.layout = html.Div(children=[
             style={'text-align': 'center'}),
     generate_table(),
     html.Br(),
+    coin_info(),
     html.Br(),
-    generate_ddl_coins(),
+    html.Div([generate_ddl_coins(),
+              generate_ddl_currencies()]),
     html.Div(id='graph'),
     generate_slider(),
     html.Br(),
@@ -147,9 +170,8 @@ app.layout = html.Div(children=[
     html.Div(id='tabs-example-content')
 ])
 
+
 # graph - price, market cap
-
-
 
 
 @app.callback(Output('tabs-example-content', 'children'),
@@ -173,9 +195,10 @@ def render_content(tab):
 @app.callback(
     Output('graph', 'children'),
     [Input('input-ddl-coins', 'value'),
+     Input('input-ddl-currencies', 'value'),
      Input('slider', 'value')])
-def update_graph(coin, days):
-    dates, prices, historic_low, historic_high = get_price_history(coin, days)
+def update_graph(coin, currency, days):
+    dates, prices, historic_low, historic_high = get_price_history(coin, currency, days)
     return html.Div(dcc.Graph(
         id='figure',
         figure={
@@ -193,7 +216,7 @@ def update_graph(coin, days):
                     'showgrid': True,
                 },
                 'yaxis': {
-                    'title': 'Price USD',
+                    'title': 'Price ' + currency,
                     'showgrid': True,
                 }
             }
@@ -203,6 +226,7 @@ def update_graph(coin, days):
         }
     )
     )
+
 
 # start flask server
 if __name__ == '__main__':
