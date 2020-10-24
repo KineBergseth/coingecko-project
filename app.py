@@ -8,16 +8,13 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash_table import DataTable
 from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
 from itertools import islice
+
 import json
 
 # Python3 wrapper around the CoinGecko API
 cg = CoinGeckoAPI()
-
-
-# fetches data about a specific coin
-def get_coin(coin_id='bitcoin'):
-    return cg.get_coin_by_id(coin_id)
 
 
 # get list of all supported currencies
@@ -32,11 +29,19 @@ def get_data():
     df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'price_change_24h', 'market_cap_change_24h', 'ath',
              'ath_change_percentage', 'ath_date', 'atl', 'atl_change_percentage', 'atl_date', 'roi'], axis=1,
             inplace=True)
-    df.to_csv(r'data.csv')
+    df.to_csv(r'data.csv')  # TODO SLETT LINJE
     return df
 
 
-print(get_data().loc[1])
+# gets data about specific coin
+def get_coin_data(coin_id):
+    coin_data = cg.get_coin_by_id(coin_id, market_data='true', sparkline='true')
+    df = pd.DataFrame.from_dict(coin_data, orient='index')
+    df.to_csv(r'coin_data.csv')  # TODO SLETT LINJE
+    return df
+
+
+get_coin_data('bitcoin')
 
 
 # get data about a crypto currency for a specific date
@@ -62,10 +67,12 @@ def get_price_history(coin_id, currency, days):
     # return coin, date-interval, prices, and historic low and high price
     return dates, prices, historic_low, historic_high
 
-
-# Dash App user interface
+########################################################################################################################
+# DASH APP USER INTERFACE
 # bruker extern CSS fil, har ikke skrevet den selv btw
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# https://codepen.io/chriddyp/pen/bWLwgP.css
+# THEMES: https://www.bootstrapcdn.com/bootswatch/
+external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
@@ -142,8 +149,17 @@ def generate_slider():
     )
 
 
-def coin_info():
-    return html.Div(html.Img(src=('https://assets.coingecko.com/coins/images/1/large/bitcoin.png?1547033579')))
+# create buttons where user can select time interval
+def time_buttons():
+    return html.Div(
+    [
+        dbc.ButtonGroup(
+            [dbc.Button("24h"), dbc.Button("7d"), dbc.Button("14d"), dbc.Button("30d"), dbc.Button("90d"), dbc.Button("180d"), dbc.Button("1y"), dbc.Button("Max")],
+            size="sm",
+            className="mr-1",
+        )
+    ]
+)
 
 
 # description
@@ -151,44 +167,32 @@ def coin_info():
 # summary table
 app.layout = html.Div(children=[
     html.Br(),
-    html.H1("Crypto stuff",
+    html.H1("Top 10 Coins by Market Capitalization",
             style={'text-align': 'center'}),
     generate_table(),
     html.Br(),
-    coin_info(),
+    # coin_info(),
     html.Br(),
     html.Div([generate_ddl_coins(),
               generate_ddl_currencies()]),
-    html.Div(id='graph'),
-    generate_slider(),
+
     html.Br(),
-    dcc.Tabs(id='tabs-example', value='tab-1', children=[
-        dcc.Tab(label='Tab one', value='tab-1'),
-        dcc.Tab(label='Tab two', value='tab-2'),
-        dcc.Tab(label='Tab three', value='tab-3'),
+    dcc.Tabs([
+        dcc.Tab(label='Overview', children=[html.H3('Bitcoin overview'),
+                                            html.Div(id='coin_info'),
+        ]),
+        dcc.Tab(label='Graphs', children=[html.Div([
+            html.H3('Bitcoin - US Dollar Chart (BTC/USD) '),
+            time_buttons(),
+            html.Div(id='graph'),
+            generate_slider()])]),
+        dcc.Tab(label='Historical data', children=[html.H3('Tab content 3')]),
     ]),
     html.Div(id='tabs-example-content')
 ])
 
 
 # graph - price, market cap
-
-
-@app.callback(Output('tabs-example-content', 'children'),
-              [Input('tabs-example', 'value')])
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div([
-            html.H3('Tab content 1')
-        ])
-    elif tab == 'tab-2':
-        return html.Div([
-            html.H3('Tab content 2')
-        ])
-    elif tab == 'tab-3':
-        return html.Div([
-            html.H3('Tab content 3')
-        ])
 
 
 # find data for graph
@@ -228,6 +232,36 @@ def update_graph(coin, currency, days):
     )
 
 
+# print coin info
+@app.callback(
+    Output('coin_info', 'children'),
+    [Input('input-ddl-coins', 'value'),
+     Input('input-ddl-currencies', 'value')]
+)
+def coin_info(coin_id, currency):
+    data = get_coin_data(coin_id)
+    return html.Div([
+        html.Img(src=(data[0]['image']['thumb'])),
+        html.P(data[0]['name']),
+        html.P(data[0]['symbol']),
+        html.P(data[0]['market_data']['current_price'][currency]),
+        html.P(data[0]['market_cap_rank']),
+        html.P(data[0]['links']['homepage'][0]),
+        html.P(data[0]['description']['en'])
+    ])
+
+
 # start flask server
 if __name__ == '__main__':
     app.run_server(debug=True)  # dev tool and hot-reloading hihi
+
+
+
+
+
+
+
+
+
+#TANKER
+# NÅR MAN KLIKKER PÅ COIN I TABELL SETTER DEN DROPDOWNLIST TIL DEN VERDIEN?
