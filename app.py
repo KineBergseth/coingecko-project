@@ -75,7 +75,7 @@ def get_price_history(coin_id, currency, days):
 # https://codepen.io/chriddyp/pen/bWLwgP.css
 # THEMES: https://www.bootstrapcdn.com/bootswatch/
 external_stylesheets = [dbc.themes.BOOTSTRAP]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(__name__)  # , external_stylesheets=external_stylesheets)
 
 server = app.server
 
@@ -156,15 +156,15 @@ def generate_ddl_currencies():
 # create buttons where user can select time interval
 def time_buttons():
     return html.Div([
-            dbc.ButtonGroup([
-                dbc.Button("24h", id="1d"),
-                dbc.Button("7d", id="7d"),
-                dbc.Button("14d", id="14d"),
-                dbc.Button("30d", id="30d", active=True),
-                dbc.Button("90d", id="90d"),
-                dbc.Button("180d", id="180d"),
-                dbc.Button("360d", id="360d"),
-            ])
+        dbc.ButtonGroup([
+            dbc.Button("24h", id="1d"),
+            dbc.Button("7d", id="7d"),
+            dbc.Button("14d", id="14d"),
+            dbc.Button("30d", id="30d", active=True),
+            dbc.Button("90d", id="90d"),
+            dbc.Button("180d", id="180d"),
+            dbc.Button("360d", id="360d"),
+        ])
     ])
 
 
@@ -174,6 +174,7 @@ def generate_tabs():
         dcc.Tab(label='Overview', children=[
             html.H3('Bitcoin overview'),
             html.Div(id='coin_info'),
+            html.Div(id='coin_info_bar'),
             html.Div(id='coin_summary'),
         ]),
         dcc.Tab(label='Graphs', children=[
@@ -182,7 +183,41 @@ def generate_tabs():
                 time_buttons(),
                 html.Div(id='day_value', style={'display': 'none'}),
                 html.Div(id='demo'),
-                html.Div(id='graph')])
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Div(
+                                    [html.H6(id="well_text"), html.P("No. of Wells")],
+                                    id="wells",
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.H6(id="gasText"), html.P("Gas")],
+                                    id="gas",
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.H6(id="oilText"), html.P("Oil")],
+                                    id="oil",
+                                    className="mini_container",
+                                ),
+                                html.Div(
+                                    [html.H6(id="waterText"), html.P("Water")],
+                                    id="water",
+                                    className="mini_container",
+                                ),
+                            ],
+                            id="info-container",
+                            className="row container-display",
+                        ),
+                        html.Div(id='graph',
+                                 className="pretty_container"),
+                    ],
+                    id="right-column",
+                    className="eight columns",
+                ),
+            ])
         ]),
         dcc.Tab(label='Historical data', children=[
             html.H3('Tab content 3')
@@ -266,7 +301,7 @@ def toggle_buttons(n_1d, n_7d, n_14d, n_30d, n_90d, n_180d, n_360d):
      Input('day_value', 'children')])
 def update_graph(coin, currency, days):
     dates, prices, historic_low, historic_high = get_price_history(coin, currency, days)
-    return html.Div(dcc.Graph(
+    return dcc.Graph(
         id='figure',
         figure={
             'data': [{
@@ -291,7 +326,6 @@ def update_graph(coin, currency, days):
         config={
             'displayModeBar': False
         }
-    )
     )
 
 
@@ -318,14 +352,44 @@ def coin_info(coin_id, currency):
 
         html.Br(),
 
-        html.P(data[0]['market_data']['market_cap'][currency]),
-        html.P(data[0]['market_data']['low_24h'][currency]),
-        html.P(data[0]['market_data']['high_24h'][currency]),
-        html.P(data[0]['market_data']['circulating_supply']),
-        html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
-        html.P(data[0]['market_data']['max_supply']),
-
     ])
+
+
+
+def get_top_bar_cell(cellTitle, cellValue):
+    return html.Div(
+        className="two-col",
+        children=[
+            html.P(className="p-top-bar", children=cellTitle),
+            html.P(id=cellTitle, className="display-none", children=cellValue),
+            # TODO make numbers readeble with currency symbol, commas % etccc, make function for this hihi
+        ],
+    )
+
+# Returns Top cell bar for header area
+@app.callback(
+    Output('coin_info_bar', 'children'),
+    [Input('input-ddl-coins', 'value'),
+     Input('input-ddl-currencies', 'value')]
+)
+# Returns HTML Top Bar for app layout
+def get_top_bar(coin_id, currency):
+    data = get_coin_data(coin_id)
+    market_cap = data[0]['market_data']['market_cap'][currency]
+    low_24h = data[0]['market_data']['low_24h'][currency]
+    high_24h = data[0]['market_data']['high_24h'][currency]
+    circulating_supply = data[0]['market_data']['circulating_supply']
+    fully_diluted_valuation = data[0]['market_data']['fully_diluted_valuation'][currency]
+    max_supply = data[0]['market_data']['max_supply']
+
+    return [
+        get_top_bar_cell("Market cap", market_cap),
+        get_top_bar_cell("Low 24h", low_24h),
+        get_top_bar_cell("High 24h", high_24h),
+        get_top_bar_cell("Circulation supply", circulating_supply),
+        get_top_bar_cell("Fully diluted valuation", fully_diluted_valuation),
+        get_top_bar_cell("Max supply", max_supply),
+    ]
 
 
 # create table and populate with crypto data
