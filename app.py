@@ -29,7 +29,7 @@ def get_data():
     df.drop(['image', 'max_supply', 'fully_diluted_valuation', 'price_change_24h', 'market_cap_change_24h', 'ath',
              'ath_change_percentage', 'ath_date', 'atl', 'atl_change_percentage', 'atl_date', 'roi'], axis=1,
             inplace=True)
-    df.to_csv(r'data.csv')  # TODO SLETT LINJE
+    df.to_csv(r'data.csv')
     return df
 
 
@@ -37,7 +37,7 @@ def get_data():
 def get_coin_data(coin_id):
     coin_data = cg.get_coin_by_id(coin_id, market_data='true', sparkline='true')
     df = pd.DataFrame.from_dict(coin_data, orient='index')
-    df.to_csv(r'coin_data.csv')  # TODO SLETT LINJE
+    df.to_csv(r'coin_data.csv')
     return df
 
 
@@ -67,6 +67,7 @@ def get_price_history(coin_id, currency, days):
     # return coin, date-interval, prices, and historic low and high price
     return dates, prices, historic_low, historic_high
 
+
 ########################################################################################################################
 # DASH APP USER INTERFACE
 # bruker extern CSS fil, har ikke skrevet den selv btw
@@ -76,6 +77,28 @@ external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
+
+
+def gen_nav_bar():
+    # temporary logo taken from
+    # <a href="https://lovepik.com/images/png-coin.html">Coin Png vectors by Lovepik.com</a>
+    return dbc.Navbar([
+        html.A(
+            # Use row and col to control vertical alignment of logo / brand
+            dbc.Row(
+                [
+                    dbc.Col(html.Img(src=app.get_asset_url('logo.png'), height="50px")),
+                    dbc.Col(dbc.NavbarBrand("Cryptocurrency dashboard", className="dashboard-nav")),
+                ],
+                align="center",
+                no_gutters=True,
+            ),
+            #href="https://plot.ly",
+        ),
+    ],
+    color="dark",
+    dark=True,
+)
 
 
 # create table and populate with crypto data
@@ -152,20 +175,22 @@ def generate_slider():
 # create buttons where user can select time interval
 def time_buttons():
     return html.Div(
-    [
-        dbc.ButtonGroup(
-            [dbc.Button("24h"), dbc.Button("7d"), dbc.Button("14d"), dbc.Button("30d"), dbc.Button("90d"), dbc.Button("180d"), dbc.Button("1y"), dbc.Button("Max")],
-            size="sm",
-            className="mr-1",
-        )
-    ]
-)
+        [
+            dbc.ButtonGroup(
+                [dbc.Button("24h"), dbc.Button("7d"), dbc.Button("14d"), dbc.Button("30d"), dbc.Button("90d"),
+                 dbc.Button("180d"), dbc.Button("1y"), dbc.Button("Max")],
+                size="sm",
+                className="mr-1",
+            )
+        ]
+    )
 
 
 # description
 
 # summary table
 app.layout = html.Div(children=[
+    gen_nav_bar(),
     html.Br(),
     html.H1("Top 10 Coins by Market Capitalization",
             style={'text-align': 'center'}),
@@ -180,7 +205,7 @@ app.layout = html.Div(children=[
     dcc.Tabs([
         dcc.Tab(label='Overview', children=[html.H3('Bitcoin overview'),
                                             html.Div(id='coin_info'),
-        ]),
+                                            ]),
         dcc.Tab(label='Graphs', children=[html.Div([
             html.H3('Bitcoin - US Dollar Chart (BTC/USD) '),
             time_buttons(),
@@ -245,23 +270,65 @@ def coin_info(coin_id, currency):
         html.P(data[0]['name']),
         html.P(data[0]['symbol']),
         html.P(data[0]['market_data']['current_price'][currency]),
+        html.P(data[0]['market_data']['price_change_percentage_24h']),
+
+        html.Br(),
+
         html.P(data[0]['market_cap_rank']),
         html.P(data[0]['links']['homepage'][0]),
-        html.P(data[0]['description']['en'])
+        html.P(data[0]['links']['blockchain_site']),
+
+        html.Br(),
+
+        html.P(data[0]['market_data']['market_cap'][currency]),
+        html.P(data[0]['market_data']['low_24h'][currency]),
+        html.P(data[0]['market_data']['high_24h'][currency]),
+        html.P(data[0]['market_data']['circulating_supply']),
+        html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
+        html.P(data[0]['market_data']['max_supply']),
+
+        html.Br(),
+
+        html.Img(src=(data[0]['image']['thumb'])),
+        html.P(data[0]['name']),
+        html.P(data[0]['symbol']),
+        html.P(data[0]['market_cap_rank']),
+        html.P(data[0]['description']['en']),
+        html.P(data[0]['genesis_date']),
+        html.P(data[0]['market_data']['current_price'][currency]),
+        html.P(data[0]['market_data']['ath'][currency]),
+        html.P(data[0]['market_data']['ath_change_percentage'][currency]),
+        html.P(data[0]['market_data']['ath_date'][currency]),
+        html.P(data[0]['market_data']['market_cap'][currency]),
+        html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
+        html.P(data[0]['market_data']['total_volume'][currency]),
+        html.P(data[0]['market_data']['high_24h'][currency]),
+        html.P(data[0]['market_data']['low_24h'][currency]),
+        html.P(data[0]['market_data']['price_change_24h']),
+        html.P(data[0]['market_data']['price_change_percentage_24h']),
+        html.P(data[0]['market_data']['price_change_percentage_7d']),
+        html.P(data[0]['market_data']['price_change_percentage_14d']),
+        html.P(data[0]['market_data']['price_change_percentage_30d']),
+        html.P(data[0]['market_data']['price_change_percentage_60d']),
+        html.P(data[0]['market_data']['price_change_percentage_200d']),
+        html.P(data[0]['market_data']['price_change_percentage_1y']),
+        html.P(data[0]['market_data']['market_cap_change_24h']),
+        html.P(data[0]['market_data']['market_cap_change_percentage_24h']),
+        html.P(data[0]['market_data']['total_supply']),
+        html.P(data[0]['market_data']['max_supply']),
+        html.P(data[0]['market_data']['circulating_supply']),
+        html.P(data[0]['market_data']['last_updated']),
+        html.P(data[0]['links']['homepage'][0]),
+        html.P(data[0]['links']['blockchain_site']),
+        html.P(data[0]['links']['official_forum_url'][0])
+
     ])
+
 
 
 # start flask server
 if __name__ == '__main__':
     app.run_server(debug=True)  # dev tool and hot-reloading hihi
 
-
-
-
-
-
-
-
-
-#TANKER
+# TANKER
 # NÅR MAN KLIKKER PÅ COIN I TABELL SETTER DEN DROPDOWNLIST TIL DEN VERDIEN?
