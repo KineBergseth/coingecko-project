@@ -3,14 +3,15 @@ from datetime import date
 from pycoingecko import CoinGeckoAPI  # https://github.com/man-c/pycoingecko
 from datetime import datetime
 import pandas as pd
+import dash
 from dash import Dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash_table import DataTable
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+from dash.exceptions import PreventUpdate
 from itertools import islice
-
 import json
 
 # Python3 wrapper around the CoinGecko API
@@ -93,12 +94,12 @@ def gen_nav_bar():
                 align="center",
                 no_gutters=True,
             ),
-            #href="https://plot.ly",
+            # href="https://plot.ly",
         ),
     ],
-    color="dark",
-    dark=True,
-)
+        color="dark",
+        dark=True,
+    )
 
 
 # create table and populate with crypto data
@@ -152,43 +153,44 @@ def generate_ddl_currencies():
     )
 
 
-# generate slider where user can select input
-def generate_slider():
-    return html.Div(dcc.Slider(
-        id='slider',
-        min=1,
-        max=360,
-        value=30,
-        step=1,
-        marks={
-            7: '1 week',
-            30: '1 month',
-            90: 'Quarter',
-            180: '6 months',
-            360: '1 year'
-        }
-    ),
-        style={'width': '80%', 'padding': '20px 10px 10px 20px'},
-    )
-
-
 # create buttons where user can select time interval
 def time_buttons():
-    return html.Div(
-        [
-            dbc.ButtonGroup(
-                [dbc.Button("24h"), dbc.Button("7d"), dbc.Button("14d"), dbc.Button("30d"), dbc.Button("90d"),
-                 dbc.Button("180d"), dbc.Button("1y"), dbc.Button("Max")],
-                size="sm",
-                className="mr-1",
-            )
-        ]
-    )
+    return html.Div([
+            dbc.ButtonGroup([
+                dbc.Button("24h", id="1d"),
+                dbc.Button("7d", id="7d"),
+                dbc.Button("14d", id="14d"),
+                dbc.Button("30d", id="30d", active=True),
+                dbc.Button("90d", id="90d"),
+                dbc.Button("180d", id="180d"),
+                dbc.Button("360d", id="360d"),
+            ])
+    ])
 
 
-# description
+# Generate tabs
+def generate_tabs():
+    return dcc.Tabs([
+        dcc.Tab(label='Overview', children=[
+            html.H3('Bitcoin overview'),
+            html.Div(id='coin_info'),
+            html.Div(id='coin_summary'),
+        ]),
+        dcc.Tab(label='Graphs', children=[
+            html.Div([
+                html.H3('Bitcoin - US Dollar Chart (BTC/USD) '),
+                time_buttons(),
+                html.Div(id='day_value', style={'display': 'none'}),
+                html.Div(id='demo'),
+                html.Div(id='graph')])
+        ]),
+        dcc.Tab(label='Historical data', children=[
+            html.H3('Tab content 3')
+        ])
+    ])
 
-# summary table
+
+# Define layout
 app.layout = html.Div(children=[
     gen_nav_bar(),
     html.Br(),
@@ -196,28 +198,64 @@ app.layout = html.Div(children=[
             style={'text-align': 'center'}),
     generate_table(),
     html.Br(),
-    # coin_info(),
     html.Br(),
     html.Div([generate_ddl_coins(),
-              generate_ddl_currencies()]),
-
+              generate_ddl_currencies()
+              ]),
     html.Br(),
-    dcc.Tabs([
-        dcc.Tab(label='Overview', children=[html.H3('Bitcoin overview'),
-                                            html.Div(id='coin_info'),
-                                            ]),
-        dcc.Tab(label='Graphs', children=[html.Div([
-            html.H3('Bitcoin - US Dollar Chart (BTC/USD) '),
-            time_buttons(),
-            html.Div(id='graph'),
-            generate_slider()])]),
-        dcc.Tab(label='Historical data', children=[html.H3('Tab content 3')]),
-    ]),
-    html.Div(id='tabs-example-content')
+    generate_tabs()
 ])
 
 
-# graph - price, market cap
+# this callback uses dash.callback_context to figure out which button
+# was clicked most recently. it then updates the "active" style of the
+# buttons appropriately, and sets some output. it could be split into
+# multiple callbacks if you prefer.
+@app.callback(
+    [
+        Output("day_value", "children"),
+        Output("1d", "active"),
+        Output("7d", "active"),
+        Output("14d", "active"),
+        Output("30d", "active"),
+        Output("90d", "active"),
+        Output("180d", "active"),
+        Output("360d", "active"),
+    ],
+    [
+        Input("1d", "n_clicks"),
+        Input("7d", "n_clicks"),
+        Input("14d", "n_clicks"),
+        Input("30d", "n_clicks"),
+        Input("90d", "n_clicks"),
+        Input("180d", "n_clicks"),
+        Input("360d", "n_clicks"),
+    ]
+)
+def toggle_buttons(n_1d, n_7d, n_14d, n_30d, n_90d, n_180d, n_360d):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if not any([n_1d, n_7d, n_14d, n_30d, n_90d, n_180d, n_360d]):
+        return "Nothing selected yet", False, False, False, False, False, False, False
+    elif button_id == "1d":
+        return "1", True, False, False, False, False, False, False
+    elif button_id == "7d":
+        return "7", False, True, False, False, False, False, False
+    elif button_id == "14d":
+        return "14", False, False, False, False, False, False, False
+    elif button_id == "30d":
+        return "30", False, False, False, True, False, False, False
+    elif button_id == "90d":
+        return "90", False, False, False, False, True, False, False
+    elif button_id == "180d":
+        return "180", False, False, False, False, False, True, False
+    elif button_id == "360d":
+        return "360", False, False, False, False, False, False, True
 
 
 # find data for graph
@@ -225,7 +263,7 @@ app.layout = html.Div(children=[
     Output('graph', 'children'),
     [Input('input-ddl-coins', 'value'),
      Input('input-ddl-currencies', 'value'),
-     Input('slider', 'value')])
+     Input('day_value', 'children')])
 def update_graph(coin, currency, days):
     dates, prices, historic_low, historic_high = get_price_history(coin, currency, days)
     return html.Div(dcc.Graph(
@@ -287,43 +325,72 @@ def coin_info(coin_id, currency):
         html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
         html.P(data[0]['market_data']['max_supply']),
 
-        html.Br(),
-
-        html.Img(src=(data[0]['image']['thumb'])),
-        html.P(data[0]['name']),
-        html.P(data[0]['symbol']),
-        html.P(data[0]['market_cap_rank']),
-        html.P(data[0]['description']['en']),
-        html.P(data[0]['genesis_date']),
-        html.P(data[0]['market_data']['current_price'][currency]),
-        html.P(data[0]['market_data']['ath'][currency]),
-        html.P(data[0]['market_data']['ath_change_percentage'][currency]),
-        html.P(data[0]['market_data']['ath_date'][currency]),
-        html.P(data[0]['market_data']['market_cap'][currency]),
-        html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
-        html.P(data[0]['market_data']['total_volume'][currency]),
-        html.P(data[0]['market_data']['high_24h'][currency]),
-        html.P(data[0]['market_data']['low_24h'][currency]),
-        html.P(data[0]['market_data']['price_change_24h']),
-        html.P(data[0]['market_data']['price_change_percentage_24h']),
-        html.P(data[0]['market_data']['price_change_percentage_7d']),
-        html.P(data[0]['market_data']['price_change_percentage_14d']),
-        html.P(data[0]['market_data']['price_change_percentage_30d']),
-        html.P(data[0]['market_data']['price_change_percentage_60d']),
-        html.P(data[0]['market_data']['price_change_percentage_200d']),
-        html.P(data[0]['market_data']['price_change_percentage_1y']),
-        html.P(data[0]['market_data']['market_cap_change_24h']),
-        html.P(data[0]['market_data']['market_cap_change_percentage_24h']),
-        html.P(data[0]['market_data']['total_supply']),
-        html.P(data[0]['market_data']['max_supply']),
-        html.P(data[0]['market_data']['circulating_supply']),
-        html.P(data[0]['market_data']['last_updated']),
-        html.P(data[0]['links']['homepage'][0]),
-        html.P(data[0]['links']['blockchain_site']),
-        html.P(data[0]['links']['official_forum_url'][0])
-
     ])
 
+
+# create table and populate with crypto data
+@app.callback(
+    Output('coin_summary', 'children'),
+    [Input('input-ddl-coins', 'value'),
+     Input('input-ddl-currencies', 'value')]
+)
+def generate_summary_table(coin_id, currency):
+    data = get_coin_data(coin_id)
+
+    # df = pd.DataFrame(
+    #     {
+    #         "Type": ["Current price"],
+    #         "Value": [data[0]['market_data']['current_price'][currency]],
+    #         # "name": ["name", [data[0]['name']]
+    #         # "value": ["symbol", [data[0]['symbol']]
+    #     }
+    # )
+    # return dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True, style_header={'display': 'none'})
+    # return DataTable(
+    # id='summary_table',
+    # data=get_coin_data(coin_id).to_dict('records'),  # only show 10/100 rows
+    # columns=[{"name": item, "id": item} for item in get_coin_data(coin_id)[0].columns],
+    # )
+    name = data[0]['name']
+    mc_rank = data[0]['market_cap_rank']
+    current_price = data[0]['market_data']['current_price'][currency]
+    market_cap = data[0]['market_data']['market_cap'][currency]
+    high_24h = data[0]['market_data']['high_24h'][currency]
+    low24_h = data[0]['market_data']['low_24h'][currency]
+    return html.Div([
+        html.Div(name),
+        html.Div(mc_rank),
+        html.Div(current_price),
+        html.Div(market_cap),
+        html.Div(high_24h),
+        html.Div(low24_h),
+        # html.Img(src=(data[0]['image']['thumb'])),
+        # html.P(data[0]['symbol']),
+        # html.P(data[0]['description']['en']),
+        # html.P(data[0]['genesis_date']),
+        # html.P(data[0]['market_data']['ath'][currency]),
+        # html.P(data[0]['market_data']['ath_change_percentage'][currency]),
+        # html.P(data[0]['market_data']['ath_date'][currency]),
+        # html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
+        # html.P(data[0]['market_data']['total_volume'][currency]),
+        # html.P(data[0]['market_data']['price_change_24h']),
+        # html.P(data[0]['market_data']['price_change_percentage_24h']),
+        # html.P(data[0]['market_data']['price_change_percentage_7d']),
+        # html.P(data[0]['market_data']['price_change_percentage_14d']),
+        # html.P(data[0]['market_data']['price_change_percentage_30d']),
+        # html.P(data[0]['market_data']['price_change_percentage_60d']),
+        # html.P(data[0]['market_data']['price_change_percentage_200d']),
+        # html.P(data[0]['market_data']['price_change_percentage_1y']),
+        # html.P(data[0]['market_data']['market_cap_change_24h']),
+        # html.P(data[0]['market_data']['market_cap_change_percentage_24h']),
+        # html.P(data[0]['market_data']['total_supply']),
+        # html.P(data[0]['market_data']['max_supply']),
+        # html.P(data[0]['market_data']['circulating_supply']),
+        # html.P(data[0]['market_data']['last_updated']),
+        # html.P(data[0]['links']['homepage'][0]),
+        # html.P(data[0]['links']['blockchain_site']),
+        # html.P(data[0]['links']['official_forum_url'][0])
+    ])
 
 
 # start flask server
@@ -332,3 +399,4 @@ if __name__ == '__main__':
 
 # TANKER
 # NÅR MAN KLIKKER PÅ COIN I TABELL SETTER DEN DROPDOWNLIST TIL DEN VERDIEN?
+# graph - price, market cap
