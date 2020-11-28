@@ -1,3 +1,11 @@
+/* Table of contents
+––––––––––––––––––––––––––––––––––––––––––––––––––
+- Base styles
+- Typography
+- Tables
+
+
+ */
 
 /* Base Styles
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
@@ -17,7 +25,6 @@ body {
   background-color: #f2f2f2;
   margin: 5%;
 }
-
 
 .pretty_container {
   border-radius: 5px;
@@ -95,3 +102,21 @@ h6 {
 p {
   margin-top: 0;
 }
+
+
+/* Tables
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+table {
+  border-collapse: collapse;
+}
+th:not(.CalendarDay),
+td:not(.CalendarDay) {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #E1E1E1; }
+th:first-child:not(.CalendarDay),
+td:first-child:not(.CalendarDay) {
+  padding-left: 0; }
+th:last-child:not(.CalendarDay),
+td:last-child:not(.CalendarDay) {
+  padding-right: 0; }

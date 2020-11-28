@@ -48,7 +48,7 @@ get_coin_data('bitcoin')
 # get data about a crypto currency for a specific date
 def get_price_date(coin_id, chosen_date):
     date_data = cg.get_coin_history_by_id(coin_id, chosen_date)
-    price = date_data['market_data']['current_price']['usd']  # kanskje ikke verdens beste løsning, men funker :P
+    price = date_data['market_data']['current_price']['usd']
     return price
 
 
@@ -102,13 +102,14 @@ def gen_nav_bar():
     )
 
 
+data_columns = ['id', 'symbol', 'Coin', 'Price', 'Mkt Cap', 'tot_volume', 'h24', 'l24', '24h Mkt', 'circulating_supply', 'tot_supply','last update']
+
 # create table and populate with crypto data
 def generate_table():
     return DataTable(
         id='table',
         data=get_data()[0:10].to_dict('records'),  # only show 10/100 rows
         columns=[{"name": item, "id": item} for item in get_data().columns],
-        filter_action='native',
         sort_action='native',
         style_data_conditional=[
             {
@@ -188,23 +189,23 @@ def generate_tabs():
                         html.Div(
                             [
                                 html.Div(
-                                    [html.H6(id="well_text"), html.P("No. of Wells")],
-                                    id="wells",
+                                    [html.H6(id="info1text"), html.P("Info")],
+                                    id="info1",
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="gasText"), html.P("Gas")],
-                                    id="gas",
+                                    [html.H6(id="info2Text"), html.P("Info")],
+                                    id="info2",
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="oilText"), html.P("Oil")],
-                                    id="oil",
+                                    [html.H6(id="info3Text"), html.P("Info")],
+                                    id="info3",
                                     className="mini_container",
                                 ),
                                 html.Div(
-                                    [html.H6(id="waterText"), html.P("Water")],
-                                    id="water",
+                                    [html.H6(id="info4Text"), html.P("Info")],
+                                    id="info4",
                                     className="mini_container",
                                 ),
                             ],
@@ -328,34 +329,7 @@ def update_graph(coin, currency, days):
         }
     )
 
-
-# print coin info
-@app.callback(
-    Output('coin_info', 'children'),
-    [Input('input-ddl-coins', 'value'),
-     Input('input-ddl-currencies', 'value')]
-)
-def coin_info(coin_id, currency):
-    data = get_coin_data(coin_id)
-    return html.Div([
-        html.Img(src=(data[0]['image']['thumb'])),
-        html.P(data[0]['name']),
-        html.P(data[0]['symbol']),
-        html.P(data[0]['market_data']['current_price'][currency]),
-        html.P(data[0]['market_data']['price_change_percentage_24h']),
-
-        html.Br(),
-
-        html.P(data[0]['market_cap_rank']),
-        html.P(data[0]['links']['homepage'][0]),
-        html.P(data[0]['links']['blockchain_site']),
-
-        html.Br(),
-
-    ])
-
-
-
+# combine name and value and put them in a HTML element
 def get_top_bar_cell(cellTitle, cellValue):
     return html.Div(
         className="two-col",
@@ -366,23 +340,38 @@ def get_top_bar_cell(cellTitle, cellValue):
         ],
     )
 
+
 # Returns Top cell bar for header area
 @app.callback(
     Output('coin_info_bar', 'children'),
     [Input('input-ddl-coins', 'value'),
      Input('input-ddl-currencies', 'value')]
 )
-# Returns HTML Top Bar for app layout
+# Returns HTML Top Bar with coin info for app layout
 def get_top_bar(coin_id, currency):
     data = get_coin_data(coin_id)
+    name = data[0]['name']
+    symbol = data[0]['symbol']
+    homepage = data[0]['links']['homepage'][0]
+    mc_rank = data[0]['market_cap_rank']
+    current_price = data[0]['market_data']['current_price'][currency]
+    pc_24h = data[0]['market_data']['price_change_percentage_24h']
     market_cap = data[0]['market_data']['market_cap'][currency]
     low_24h = data[0]['market_data']['low_24h'][currency]
     high_24h = data[0]['market_data']['high_24h'][currency]
     circulating_supply = data[0]['market_data']['circulating_supply']
     fully_diluted_valuation = data[0]['market_data']['fully_diluted_valuation'][currency]
     max_supply = data[0]['market_data']['max_supply']
+    # data[0]['links']['blockchain_site']
 
     return [
+        html.Img(src=(data[0]['image']['thumb'])),
+        get_top_bar_cell("Name", name),
+        get_top_bar_cell("Symbol", symbol),
+        get_top_bar_cell("Homepage", homepage),
+        get_top_bar_cell("Market cap rank", mc_rank),
+        get_top_bar_cell("Current_price", current_price),
+        get_top_bar_cell("Price change 24h", pc_24h),
         get_top_bar_cell("Market cap", market_cap),
         get_top_bar_cell("Low 24h", low_24h),
         get_top_bar_cell("High 24h", high_24h),
@@ -391,70 +380,32 @@ def get_top_bar(coin_id, currency):
         get_top_bar_cell("Max supply", max_supply),
     ]
 
-
-# create table and populate with crypto data
-@app.callback(
-    Output('coin_summary', 'children'),
-    [Input('input-ddl-coins', 'value'),
-     Input('input-ddl-currencies', 'value')]
-)
-def generate_summary_table(coin_id, currency):
-    data = get_coin_data(coin_id)
-
-    # df = pd.DataFrame(
-    #     {
-    #         "Type": ["Current price"],
-    #         "Value": [data[0]['market_data']['current_price'][currency]],
-    #         # "name": ["name", [data[0]['name']]
-    #         # "value": ["symbol", [data[0]['symbol']]
-    #     }
-    # )
-    # return dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True, style_header={'display': 'none'})
-    # return DataTable(
-    # id='summary_table',
-    # data=get_coin_data(coin_id).to_dict('records'),  # only show 10/100 rows
-    # columns=[{"name": item, "id": item} for item in get_coin_data(coin_id)[0].columns],
-    # )
-    name = data[0]['name']
-    mc_rank = data[0]['market_cap_rank']
-    current_price = data[0]['market_data']['current_price'][currency]
-    market_cap = data[0]['market_data']['market_cap'][currency]
-    high_24h = data[0]['market_data']['high_24h'][currency]
-    low24_h = data[0]['market_data']['low_24h'][currency]
-    return html.Div([
-        html.Div(name),
-        html.Div(mc_rank),
-        html.Div(current_price),
-        html.Div(market_cap),
-        html.Div(high_24h),
-        html.Div(low24_h),
-        # html.Img(src=(data[0]['image']['thumb'])),
-        # html.P(data[0]['symbol']),
-        # html.P(data[0]['description']['en']),
-        # html.P(data[0]['genesis_date']),
-        # html.P(data[0]['market_data']['ath'][currency]),
-        # html.P(data[0]['market_data']['ath_change_percentage'][currency]),
-        # html.P(data[0]['market_data']['ath_date'][currency]),
-        # html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
-        # html.P(data[0]['market_data']['total_volume'][currency]),
-        # html.P(data[0]['market_data']['price_change_24h']),
-        # html.P(data[0]['market_data']['price_change_percentage_24h']),
-        # html.P(data[0]['market_data']['price_change_percentage_7d']),
-        # html.P(data[0]['market_data']['price_change_percentage_14d']),
-        # html.P(data[0]['market_data']['price_change_percentage_30d']),
-        # html.P(data[0]['market_data']['price_change_percentage_60d']),
-        # html.P(data[0]['market_data']['price_change_percentage_200d']),
-        # html.P(data[0]['market_data']['price_change_percentage_1y']),
-        # html.P(data[0]['market_data']['market_cap_change_24h']),
-        # html.P(data[0]['market_data']['market_cap_change_percentage_24h']),
-        # html.P(data[0]['market_data']['total_supply']),
-        # html.P(data[0]['market_data']['max_supply']),
-        # html.P(data[0]['market_data']['circulating_supply']),
-        # html.P(data[0]['market_data']['last_updated']),
-        # html.P(data[0]['links']['homepage'][0]),
-        # html.P(data[0]['links']['blockchain_site']),
-        # html.P(data[0]['links']['official_forum_url'][0])
-    ])
+    # html.Img(src=(data[0]['image']['thumb'])),
+    # html.P(data[0]['symbol']),
+    # html.P(data[0]['description']['en']),
+    # html.P(data[0]['genesis_date']),
+    # html.P(data[0]['market_data']['ath'][currency]),
+    # html.P(data[0]['market_data']['ath_change_percentage'][currency]),
+    # html.P(data[0]['market_data']['ath_date'][currency]),
+    # html.P(data[0]['market_data']['fully_diluted_valuation'][currency]),
+    # html.P(data[0]['market_data']['total_volume'][currency]),
+    # html.P(data[0]['market_data']['price_change_24h']),
+    # html.P(data[0]['market_data']['price_change_percentage_24h']),
+    # html.P(data[0]['market_data']['price_change_percentage_7d']),
+    # html.P(data[0]['market_data']['price_change_percentage_14d']),
+    # html.P(data[0]['market_data']['price_change_percentage_30d']),
+    # html.P(data[0]['market_data']['price_change_percentage_60d']),
+    # html.P(data[0]['market_data']['price_change_percentage_200d']),
+    # html.P(data[0]['market_data']['price_change_percentage_1y']),
+    # html.P(data[0]['market_data']['market_cap_change_24h']),
+    # html.P(data[0]['market_data']['market_cap_change_percentage_24h']),
+    # html.P(data[0]['market_data']['total_supply']),
+    # html.P(data[0]['market_data']['max_supply']),
+    # html.P(data[0]['market_data']['circulating_supply']),
+    # html.P(data[0]['market_data']['last_updated']),
+    # html.P(data[0]['links']['homepage'][0]),
+    # html.P(data[0]['links']['blockchain_site']),
+    # html.P(data[0]['links']['official_forum_url'][0])
 
 
 # start flask server
@@ -463,4 +414,4 @@ if __name__ == '__main__':
 
 # TANKER
 # NÅR MAN KLIKKER PÅ COIN I TABELL SETTER DEN DROPDOWNLIST TIL DEN VERDIEN?
-# graph - price, market cap
+# graph - price, market cap?
